@@ -19,6 +19,8 @@
             <input type="hidden" name="game_id" value="{{ game_id }}">
             <button type="submit">Start Game</button>
         </form>
+    {% else %}
+        <p>You are a player. Wait for the host to start the game.</p>
     {% endif %}
 </body>
 </html>
