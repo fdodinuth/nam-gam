@@ -23,7 +23,7 @@
         let timer = {{ timer }};
         let countdown = setInterval(function() {
             if (timer <= 0) {
-                clearInterval(countdown);
+                 clearInterval(countdown);
                 alert("Time's up! Submitting answers.");
                 document.querySelector('form').submit();
             } else {
