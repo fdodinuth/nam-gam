@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Show Answers</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body class="dark-theme">
+    <div class="container">
+        <h2>Answers</h2>
+        <ul>
+            {% for player, answers in game_data['answers'].items() %}
+                <li><strong>{{ player }}</strong>
+                    <ul>
+                        {% for i, question in enumerate(game_data['questions']) %}
+                            <li>{{ question }}: {{ answers['answer' + loop.index|string] }}</li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <form method="GET" action="{{ url_for('restart_game', game_id=game_data['game_id']) }}">
+            <button type="submit">Restart Game</button>
+        </form>
+    </div>
+</body>
+</html>
