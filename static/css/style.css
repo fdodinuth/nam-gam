@@ -1,0 +1,45 @@
+body {
+  background-color: #121212;
+  color: #E0E0E0;
+  font-family: 'Roboto', sans-serif;
+}
+
+h1, h4 {
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.btn {
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 8px;
+}
+
+input.form-control {
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #444;
+}
+
+input.form-control:focus {
+  background-color: #444;
+  border-color: #00BFFF;
+}
+
+button {
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+button:hover {
+  background-color: #00BFFF;
+  transform: scale(1.05);
+}
+
+#playersList {
+  margin-top: 20px;
+}
+
+.alert-info {
+  background-color: #333;
+  color: #B0B0B0;
+}
