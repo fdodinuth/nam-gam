@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Answers Revealed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Answers Revealed</h1>
+    <h2>Game ID: {{ game_id }}</h2>
+    <table>
+        <tr>
+            <th>Player</th>
+            <th>Answers</th>
+        </tr>
+        {% for player, answers in answers.items() %}
+        <tr>
+            <td>{{ player }}</td>
+            <td>
+                {% for i in range(0, questions|length) %}
+                    <p>{{ questions[i] }}: {{ answers['answer' + i|string] }}</p>
+                {% endfor %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <form action="{{ url_for('restart_game') }}" method="POST">
+        <input type="hidden" name="game_id" value="{{ game_id }}">
+        <button type="submit">Restart Game</button>
+    </form>
+</body>
+</html>
