@@ -3,7 +3,7 @@ import random
 import time
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key"  # Use a proper secret key in production.
+app.secret_key = "10005000"  # Use a proper secret key in production.
 
 # Store active games (In a real app, use a database)
 active_games = {}
