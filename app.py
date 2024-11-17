@@ -42,14 +42,11 @@ def start_game():
     game_id = request.form['game_id']
     if game_id in active_games:
         game_data = active_games[game_id]
-        # Check if the current user is the host
-        if game_data['host'] == session.get('username'):
-            game_data['game_started'] = True
-            active_games[game_id] = game_data
-            # Start the game with a timer for answering (e.g., 30 seconds per question)
-            return render_template('game.html', game_id=game_id, questions=QUESTIONS, timer=30)
-        else:
-            return "Only the host can start the game", 403  # Host only can start the game
+        # Allow any player to start the game, not just the host
+        game_data['game_started'] = True
+        active_games[game_id] = game_data
+        # Start the game with a timer for answering (e.g., 30 seconds per question)
+        return render_template('game.html', game_id=game_id, questions=QUESTIONS, timer=30)
     return "Game ID not found", 404
 
 @app.route('/submit_answers', methods=['POST'])
