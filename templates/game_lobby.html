@@ -14,13 +14,10 @@
         {% endfor %}
     </ul>
     
-    {% if is_host %}
-        <form action="{{ url_for('start_game') }}" method="POST">
-            <input type="hidden" name="game_id" value="{{ game_id }}">
-            <button type="submit">Start Game</button>
-        </form>
-    {% else %}
-        <p>You are a player. Wait for the host to start the game.</p>
-    {% endif %}
+    <form action="{{ url_for('start_game') }}" method="POST">
+        <input type="hidden" name="game_id" value="{{ game_id }}">
+        <button type="submit">Start Game</button>
+    </form>
+
 </body>
 </html>
