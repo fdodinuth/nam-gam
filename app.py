@@ -1,26 +1,19 @@
-from flask import Flask, render_template, request, redirect, url_for
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import random
+import time
+from flask_socketio import SocketIO, emit
 
-# Initialize Flask app and SocketIO
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
+app.secret_key = 'your_secret_key'  # For session management
 socketio = SocketIO(app)
 
-# Store game data (in memory for this example)
-games = {}
-
-# Hardcoded questions (fixed questions)
-questions = [
-    "Nam?",
-    "Gam?",
-    "Pala?",
-    "Ela?",
-    "Sathu?",
-    "Mal?",
-    "Rata?",
-    "Sindu?"
+# Predefined questions
+QUESTIONS = [
+    "nam", "gam", "pala", "ela", "sathu", "mal", "rata", "sindu"
 ]
+
+# Store active game data
+active_games = {}
 
 @app.route('/')
 def index():
@@ -30,112 +23,73 @@ def index():
 def host_game():
     username = request.form['username']
     game_id = str(random.randint(1000, 9999))  # Generate a random game ID
-
-    # Create a game room with the game ID and store the player's info
-    games[game_id] = {
+    session['username'] = username
+    active_games[game_id] = {
+        'host': username,
         'players': [username],
         'game_started': False,
-        'timer': 100,  # Initial timer (100 seconds)
-        'questions': questions,  # Fixed list of questions
         'answers': {},
-        'game_over': False
+        'time_limit': 30  # Default answering time limit
     }
-
     return render_template('game_lobby.html', game_id=game_id, players=[username], is_host=True)
 
 @app.route('/join_game', methods=['POST'])
 def join_game():
     username = request.form['username']
     game_id = request.form['game_id']
-
-    # Check if the game exists
-    if game_id not in games:
+    
+    if game_id in active_games:
+        game_data = active_games[game_id]
+        game_data['players'].append(username)
+        active_games[game_id] = game_data
+        session['username'] = username
+        return render_template('game_lobby.html', game_id=game_id, players=game_data['players'], is_host=False)
+    else:
         return "Game not found!", 404
 
-    # Add the player to the game
-    games[game_id]['players'].append(username)
+@app.route('/start_game', methods=['POST'])
+def start_game():
+    game_id = request.form['game_id']
+    game_data = active_games.get(game_id)
+    
+    if game_data and game_data['host'] == session.get('username'):
+        game_data['game_started'] = True
+        active_games[game_id] = game_data
+        # Start the timer (30 seconds for example)
+        return render_template('game.html', game_id=game_id, questions=QUESTIONS, time_limit=game_data['time_limit'])
+    
+    return "Only the host can start the game", 403
 
-    return render_template('game_lobby.html', game_id=game_id, players=games[game_id]['players'], is_host=False)
+@app.route('/submit_answers', methods=['POST'])
+def submit_answers():
+    game_id = request.form['game_id']
+    answers = request.form.getlist('answers[]')  # Get answers from form
+    
+    if game_id in active_games:
+        game_data = active_games[game_id]
+        player = session.get('username')
+        game_data['answers'][player] = answers
+        active_games[game_id] = game_data
+        
+        # Check if all players have submitted answers
+        if len(game_data['answers']) == len(game_data['players']):
+            return render_template('results.html', game_id=game_id, answers=game_data['answers'])
+    
+    return "Error submitting answers", 500
 
-@app.route('/game/<game_id>', methods=['GET'])
-def game(game_id):
-    if game_id not in games:
-        return "Game not found!", 404
-
-    # Check if game started
-    if not games[game_id]['game_started']:
-        return redirect(url_for('index'))  # Redirect to index if the game hasn't started
-
-    return render_template('game.html', game_id=game_id, players=games[game_id]['players'])
-
-# Handle socket connection
-@socketio.on('join_game')
-def handle_join_game(data):
-    username = data['username']
-    room = data['room']
-
-    # Join the room
-    join_room(room)
-
-    # Add player to the game's player list
-    games[room]['players'].append(username)
-
-    # Emit the updated player list to everyone in the room
-    emit('update_player_list', {'players': games[room]['players']}, room=room)
-
-@socketio.on('start_game')
-def start_game(data):
-    room = data['room']
-
-    # Ensure the game exists and hasn't already started
-    if room in games and not games[room]['game_started']:
-        games[room]['game_started'] = True
-
-        # Emit game start to all players in the room
-        emit('game_started', {'message': 'Game has started!'}, room=room)
-
-        # Send the fixed questions to players
-        emit('send_questions', {'questions': games[room]['questions']}, room=room)
-
-        # Optionally, start a timer for 100 seconds
-        emit('start_timer', {'time': games[room]['timer']}, room=room)
-
-@socketio.on('submit_answer')
-def submit_answer(data):
-    room = data['room']
-    username = data['username']
-    answer = data['answer']
-
-    # Save the answer for the player
-    if room in games and not games[room]['game_over']:
-        if username not in games[room]['answers']:
-            games[room]['answers'][username] = []
-
-        games[room]['answers'][username].append(answer)
-        emit('update_answers', {'answers': games[room]['answers']}, room=room)
-
-@socketio.on('end_game')
-def end_game(data):
-    room = data['room']
-
-    if room in games:
-        games[room]['game_over'] = True
-        emit('game_over', {'message': 'Game Over!'}, room=room)
-        emit('show_answers', {'answers': games[room]['answers']}, room=room)
-
-@socketio.on('restart_game')
-def restart_game(data):
-    room = data['room']
-
-    if room in games:
-        # Reset game state
-        games[room]['game_started'] = False
-        games[room]['timer'] = 100
-        games[room]['answers'] = {}
-        games[room]['game_over'] = False
-
-        emit('game_restarted', {'message': 'Game has been restarted!'}, room=room)
-        emit('start_timer', {'time': games[room]['timer']}, room=room)
+@app.route('/restart_game', methods=['POST'])
+def restart_game():
+    game_id = request.form['game_id']
+    game_data = active_games.get(game_id)
+    
+    if game_data and game_data['host'] == session.get('username'):
+        # Reset the game state but keep the players
+        game_data['game_started'] = False
+        game_data['answers'] = {}
+        active_games[game_id] = game_data
+        return render_template('game_lobby.html', game_id=game_id, players=game_data['players'], is_host=True)
+    
+    return "Only the host can restart the game", 403
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host="0.0.0.0", port=5000)
