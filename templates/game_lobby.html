@@ -2,22 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Lobby</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="static/style.css">
 </head>
-<body>
-    <h1>Game Lobby: {{ game_id }}</h1>
-    <h2>Players:</h2>
-    <ul>
-        {% for player in players %}
-            <li>{{ player }}</li>
-        {% endfor %}
-    </ul>
-    
-    <form action="{{ url_for('start_game') }}" method="POST">
-        <input type="hidden" name="game_id" value="{{ game_id }}">
-        <button type="submit">Start Game</button>
-    </form>
+<body class="dark-theme">
+    <div class="container">
+        <h2>Game Lobby</h2>
+        <p>Game ID: {{ game_id }}</p>
+        <h3>Players:</h3>
+        <ul>
+            {% for player in players %}
+                <li>{{ player }}</li>
+            {% endfor %}
+        </ul>
 
+        {% if is_host %}
+            <form method="POST" action="{{ url_for('start_game') }}">
+                <button type="submit">Start Game</button>
+            </form>
+        {% else %}
+            <p>Waiting for host to start the game...</p>
+        {% endif %}
+    </div>
 </body>
 </html>
