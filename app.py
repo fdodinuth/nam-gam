@@ -20,7 +20,7 @@ def index():
 @app.route('/host_game', methods=['POST'])
 def host_game():
     username = request.form['username']
-    session['username'] = username
+    session['username'] = username  # Store host's username in session
     game_id = str(random.randint(1000, 9999))  # Generate random game ID
     active_games[game_id] = {'host': username, 'players': [username], 'game_started': False, 'answers': {}}
     return render_template('game_lobby.html', game_id=game_id, players=[username], is_host=True)
@@ -42,12 +42,15 @@ def start_game():
     game_id = request.form['game_id']
     if game_id in active_games:
         game_data = active_games[game_id]
-        if game_data['host'] == session.get('username'):  # Only the host can start the game
+        # Check if the current user is the host
+        if game_data['host'] == session.get('username'):
             game_data['game_started'] = True
             active_games[game_id] = game_data
-            # Set the timer for answering (30 seconds for each question)
+            # Start the game with a timer for answering (e.g., 30 seconds per question)
             return render_template('game.html', game_id=game_id, questions=QUESTIONS, timer=30)
-    return "Only the host can start the game", 403
+        else:
+            return "Only the host can start the game", 403  # Host only can start the game
+    return "Game ID not found", 404
 
 @app.route('/submit_answers', methods=['POST'])
 def submit_answers():
