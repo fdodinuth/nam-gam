@@ -3,15 +3,22 @@ import random
 import time
 
 app = Flask(__name__)
-app.secret_key = "10005000"  # Use a proper secret key in production.
+app.secret_key = 'your_secret_key'  # Replace with a secure key
 
-# Store active games (In a real app, use a database)
-active_games = {}
-
-# Questions (Fixed for now)
+# Predefined questions
 QUESTIONS = [
-    "Nam", "Gam", "Palathuru", "Elaulu", "Saththu", "Mal", "Rata", "Sindu"
+    "What's your name?",
+    "What's your game?",
+    "What's your favorite dish?",
+    "What's your hobby?",
+    "What's your favorite animal?",
+    "What's your favorite color?",
+    "What's your country?",
+    "What's your favorite song?"
 ]
+
+# Active games stored in-memory
+active_games = {}
 
 @app.route('/')
 def index():
@@ -19,67 +26,78 @@ def index():
 
 @app.route('/host_game', methods=['POST'])
 def host_game():
-    username = request.form['username']
-    session['username'] = username  # Store host's username in session
-    game_id = str(random.randint(1000, 9999))  # Generate random game ID
-    active_games[game_id] = {'host': username, 'players': [username], 'game_started': False, 'answers': {}}
+    username = request.form.get('username')
+    game_id = str(random.randint(1000, 9999))
+    
+    session['username'] = username
+    session['game_id'] = game_id
+    active_games[game_id] = {
+        'host': username,
+        'players': [username],
+        'game_started': False,
+        'answers': {},
+        'timer': 30
+    }
     return render_template('game_lobby.html', game_id=game_id, players=[username], is_host=True)
 
 @app.route('/join_game', methods=['POST'])
 def join_game():
-    username = request.form['username']
-    game_id = request.form['game_id']
+    username = request.form.get('username')
+    game_id = request.form.get('game_id')
     
     if game_id in active_games:
         session['username'] = username
+        session['game_id'] = game_id
         active_games[game_id]['players'].append(username)
         return render_template('game_lobby.html', game_id=game_id, players=active_games[game_id]['players'], is_host=False)
-    else:
-        return "Game not found", 404
+    return "Game not found!", 404
 
 @app.route('/start_game', methods=['POST'])
 def start_game():
-    game_id = request.form['game_id']
-    if game_id in active_games:
-        game_data = active_games[game_id]
-        # Allow any player to start the game, not just the host
-        game_data['game_started'] = True
-        active_games[game_id] = game_data
-        # Start the game with a timer for answering (e.g., 30 seconds per question)
+    game_id = session.get('game_id')
+    
+    if game_id and game_id in active_games:
+        active_games[game_id]['game_started'] = True
+        active_games[game_id]['timer'] = 30  # Reset timer to 30 seconds
+        
+        # Redirect to the game page where the questions will be asked
         return render_template('game.html', game_id=game_id, questions=QUESTIONS, timer=30)
-    return "Game ID not found", 404
+
+    return "Unable to start game.", 400
 
 @app.route('/submit_answers', methods=['POST'])
 def submit_answers():
-    game_id = request.form['game_id']
+    game_id = session.get('game_id')
+    answers = request.form.to_dict()
+    
     if game_id in active_games:
-        game_data = active_games[game_id]
-        if session.get('username') in game_data['players']:
-            answers = {f"answer{i}": request.form[f"answer{i}"] for i in range(len(QUESTIONS))}
-            game_data['answers'][session['username']] = answers
-            active_games[game_id] = game_data
-            return redirect(url_for('reveal_answers', game_id=game_id))
+        active_games[game_id]['answers'][session['username']] = answers
+        return redirect(url_for('show_answers', game_id=game_id))
+
     return "Error submitting answers", 400
 
-@app.route('/reveal_answers/<game_id>')
-def reveal_answers(game_id):
+@app.route('/show_answers/<game_id>')
+def show_answers(game_id):
     if game_id in active_games:
         game_data = active_games[game_id]
-        if all(player in game_data['answers'] for player in game_data['players']):
-            return render_template('reveal_answers.html', game_id=game_id, answers=game_data['answers'])
-    return "Waiting for all players to answer", 200
+        return render_template('show_answers.html', game_data=game_data)
 
-@app.route('/restart_game', methods=['POST'])
-def restart_game():
-    game_id = request.form['game_id']
-    if game_id in active_games:
-        game_data = active_games[game_id]
-        if game_data['host'] == session.get('username'):
-            game_data['game_started'] = False
-            game_data['answers'] = {}
-            active_games[game_id] = game_data
-            return redirect(url_for('game_lobby', game_id=game_id))
-    return "Only the host can restart the game", 403
+    return "Game not found.", 404
+
+@app.route('/restart_game/<game_id>')
+def restart_game(game_id):
+    if game_id in active_games and active_games[game_id]['host'] == session['username']:
+        # Reset game state
+        active_games[game_id] = {
+            'host': active_games[game_id]['host'],
+            'players': active_games[game_id]['players'],
+            'game_started': False,
+            'answers': {},
+            'timer': 30
+        }
+        return redirect(url_for('game_lobby', game_id=game_id))
+
+    return "Only the host can restart the game.", 403
 
 if __name__ == '__main__':
     app.run(debug=True)
